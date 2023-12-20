@@ -27,7 +27,7 @@ int main(void)
     test_access_restriction();
 	
     test_rw_operation(ans, block);
-    // test_rw_operation(&ans, &block);會出現奇怪的warningd
+    // test_rw_operation(&ans, &block);會出現奇怪的warning
 
     return 0;
 }
