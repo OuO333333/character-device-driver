@@ -1,0 +1,11 @@
+*
+
+!.gitignore
+
+!driver/Makefile
+!driver/mychardev.c
+
+!test/Makefile
+!test/check.c
+
+!README.md
