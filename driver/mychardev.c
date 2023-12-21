@@ -14,8 +14,10 @@
 #define MY_MAX_MINORS	2  
 #define BUF_LEN 512
 
-#define WR_VALUE _IOW('a','a',int32_t*)
-#define RD_VALUE _IOR('a','b',int32_t*)
+#define WR_BUFFER_INDEX _IOW('a','a',int32_t*)
+#define RD_BUFFER_INDEX _IOR('a','b',int32_t*)
+#define WR_BUFFER _IOW('a','c',char*)
+#define RD_BUFFER _IOR('a','d',char*)
 
 static int mychardev_open(struct inode *inode, struct file *file);
 static int mychardev_release(struct inode *inode, struct file *file);
@@ -112,19 +114,18 @@ void __exit mychardev_exit(void)
 static int mychardev_open(struct inode *inode, struct file *file)
 {
     int minor_num = MINOR(file->f_path.dentry->d_inode->i_rdev);
-    // printk("\nMYCHARDEV: Device open\n");
     if(!atomic_cmpxchg(&mychardev_data[minor_num].atomic_variable, 0, 1)){
-        printk("\nMYCHARDEV: Device open successfully\n");
+        printk("MYCHARDEV: Device open successfully\n");
         return 0;
     }
-    printk("\nMYCHARDEV: Device open failed\n");
+    printk("MYCHARDEV: Device open failed\n");
     return -EBUSY; 
 }
 
 static int mychardev_release(struct inode *inode, struct file *file)
 {
     int minor_num = MINOR(file->f_path.dentry->d_inode->i_rdev);
-    printk("MYCHARDEV: Device close\n");
+    printk("MYCHARDEV: Device close\n\n");
     atomic_set(&mychardev_data[minor_num].atomic_variable, 0);
     return 0;
 }
@@ -141,15 +142,27 @@ static long mychardev_ioctl(struct file *file, unsigned int cmd, unsigned long a
     printk("MYCHARDEV: Device ioctl\n");
 
     switch(cmd){
-        case WR_VALUE:
+        case WR_BUFFER_INDEX:
             /* 透過 pointer 存取 struct 的成員，會存取到成員的值 */
             if(copy_from_user(&(mychar_data -> buffer_index), (int32_t*) arg, sizeof(mychar_data -> buffer_index)))
             {
                 printk("Data Write : Err!\n");
             }
             break;
-        case RD_VALUE:
+        case RD_BUFFER_INDEX:
             if(copy_to_user((int32_t*) arg, &(mychar_data -> buffer_index), sizeof(mychar_data -> buffer_index)))
+            {
+                printk("Data Read : Err!\n");
+            }
+            break;
+        case WR_BUFFER:
+            if(copy_from_user((mychar_data -> buffer) + (mychar_data -> buffer_index), (char*) arg, sizeof(char)))
+            {
+                printk("Data Read : Err!\n");
+            }
+            break;
+        case RD_BUFFER:
+            if(copy_to_user((char*) arg, &(mychar_data -> buffer[mychar_data -> buffer_index]), sizeof(char)))
             {
                 printk("Data Read : Err!\n");
             }
@@ -166,10 +179,11 @@ static ssize_t mychardev_read(struct file *file, char __user *buf, size_t count,
     size_t datalen = 1024;
     int minor_num = MINOR(file->f_path.dentry->d_inode->i_rdev);
     struct mychar_device_data *mychar_data = &mychardev_data[minor_num];
-	
-    printk("Reading device: %d\n", minor_num);
-    printk("Copied %zd bytes from the device\n", count);
-    printk("mychar_data -> buffer: %s\n", mychar_data -> buffer);
+
+    printk("MYCHARDEV: Device read");
+    // printk("Reading device: %d\n", minor_num);
+    // printk("Copied %zd bytes from the device\n", count);
+    // printk("mychar_data -> buffer: %s\n", mychar_data -> buffer);
 
     if (count > datalen) {
         count = datalen;
@@ -190,7 +204,8 @@ static ssize_t mychardev_write(struct file *file, const char __user *buf, size_t
     struct mychar_device_data *mychar_data = &mychardev_data[minor_num];
     int i = 0;
 
-    printk("Writing device: %d\n", minor_num);
+    printk("MYCHARDEV: Device write");
+    // printk("Writing device: %d\n", minor_num);
 
     if (count < maxdatalen) {
         maxdatalen = count;
@@ -199,9 +214,9 @@ static ssize_t mychardev_write(struct file *file, const char __user *buf, size_t
     ncopied = copy_from_user(databuf, buf, maxdatalen);
 
     if (ncopied == 0) {
-        printk("Copied %zd bytes from the user\n", maxdatalen);
+        // printk("Copied %zd bytes from the user\n", maxdatalen);
     } else {
-        printk("Could't copy %zd bytes from the user\n", ncopied);
+        // printk("Could't copy %zd bytes from the user\n", ncopied);
     }
 
     for(i = 0; i < BUF_LEN; i++){
@@ -211,7 +226,7 @@ static ssize_t mychardev_write(struct file *file, const char __user *buf, size_t
             mychar_data -> buffer[i] = '\0';
     }
 
-    printk("mychar_data -> buffer: %s\n", mychar_data -> buffer);
+    // printk("mychar_data -> buffer: %s\n", mychar_data -> buffer);
 
     return count;
 }
