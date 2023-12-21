@@ -79,18 +79,18 @@ void test_access_restriction(){
 }
 
 void test_ioctl(){
-	int fd;
-	int32_t buffer_index = 5;
-	char buf[4] = {'x', 'y', 'z'};
-	fd = open("/dev/mychardev-0", O_RDWR);
+    int fd;
+    int32_t buffer_index = 5;
+    char buf[4] = {'x', 'y', 'z'};
+    fd = open("/dev/mychardev-0", O_RDWR);
 
     /* writing buffer_index to driver */
     ioctl(fd, WR_BUFFER_INDEX, (int32_t*) &buffer_index);
 
     /* reading buffer_index from driver */
     ioctl(fd, RD_BUFFER_INDEX, (int32_t*) &buffer_index);
-	assert(buffer_index == 5);
+    assert(buffer_index == 5);
     printf("buffer_index is %d\n", buffer_index);
 	
-	close(fd);
+    close(fd);
 }
