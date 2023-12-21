@@ -5,6 +5,7 @@
 #include <linux/kernel.h>
 #include <linux/uaccess.h>
 #include <linux/fs.h>
+#include <linux/ioctl.h>
 #include <asm/atomic.h>
 
 #define MAX_DEV 2
@@ -12,6 +13,9 @@
 #define MY_MAJOR       42
 #define MY_MAX_MINORS	2  
 #define BUF_LEN 512
+
+#define WR_VALUE _IOW('a','a',int32_t*)
+#define RD_VALUE _IOR('a','b',int32_t*)
 
 static int mychardev_open(struct inode *inode, struct file *file);
 static int mychardev_release(struct inode *inode, struct file *file);
@@ -31,6 +35,7 @@ const struct file_operations mychardev_fops = {
 struct mychar_device_data {
     struct cdev cdev;
     char buffer[BUF_LEN];
+    int buffer_index;
     atomic_t atomic_variable;
 };
 
@@ -67,6 +72,7 @@ int __init mychardev_init(void)
         cdev_init(&mychardev_data[i].cdev, &mychardev_fops);
         mychardev_data[i].cdev.owner = THIS_MODULE;
         strncpy(mychardev_data[i].buffer, "default msg", BUF_LEN);
+        mychardev_data[i].buffer_index = 0;
         atomic_set(&mychardev_data[i].atomic_variable, 0);
 
         /* static assignment */
@@ -125,7 +131,33 @@ static int mychardev_release(struct inode *inode, struct file *file)
 
 static long mychardev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
+    /*
+	* arg 為 user space 的一段記憶體位址
+    * copy_from_user 會從 user space 取出該記憶體位址的值
+    * copy_to_user 會將值存入 user space 的記憶體位址的值
+	*/
+    int minor_num = MINOR(file->f_path.dentry->d_inode->i_rdev);
+    struct mychar_device_data *mychar_data = &mychardev_data[minor_num];
     printk("MYCHARDEV: Device ioctl\n");
+
+    switch(cmd){
+        case WR_VALUE:
+            /* 透過 pointer 存取 struct 的成員，會存取到成員的值 */
+            if(copy_from_user(&(mychar_data -> buffer_index), (int32_t*) arg, sizeof(mychar_data -> buffer_index)))
+            {
+                printk("Data Write : Err!\n");
+            }
+            break;
+        case RD_VALUE:
+            if(copy_to_user((int32_t*) arg, &(mychar_data -> buffer_index), sizeof(mychar_data -> buffer_index)))
+            {
+                printk("Data Read : Err!\n");
+            }
+            break;
+        default:
+            printk("Default\n");
+            break;
+    }
     return 0;
 }
 

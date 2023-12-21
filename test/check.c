@@ -4,9 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include<sys/ioctl.h>
+
+#define WR_BUFFER_INDEX _IOW('a','a',int32_t*)
+#define RD_BUFFER_INDEX _IOR('a','b',int32_t*)
 
 void test_access_restriction();
 void test_rw_operation(unsigned char *ans, unsigned char *block);
+void test_ioctl();
 
 int main(void)
 {
@@ -29,6 +34,7 @@ int main(void)
     test_rw_operation(ans, block);
     // test_rw_operation(&ans, &block);會出現奇怪的warning
 
+    test_ioctl();
     return 0;
 }
 
@@ -70,4 +76,21 @@ void test_access_restriction(){
             close(fd[i]);
     }
     assert(count == 9);
+}
+
+void test_ioctl(){
+	int fd;
+	int32_t buffer_index = 5;
+	char buf[4] = {'x', 'y', 'z'};
+	fd = open("/dev/mychardev-0", O_RDWR);
+
+    /* writing buffer_index to driver */
+    ioctl(fd, WR_BUFFER_INDEX, (int32_t*) &buffer_index);
+
+    /* reading buffer_index from driver */
+    ioctl(fd, RD_BUFFER_INDEX, (int32_t*) &buffer_index);
+	assert(buffer_index == 5);
+    printf("buffer_index is %d\n", buffer_index);
+	
+	close(fd);
 }
