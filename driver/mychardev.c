@@ -133,10 +133,10 @@ static int mychardev_release(struct inode *inode, struct file *file)
 static long mychardev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     /*
-	* arg 為 user space 的一段記憶體位址
+    * arg 為 user space 的一段記憶體位址
     * copy_from_user 會從 user space 取出該記憶體位址的值
     * copy_to_user 會將值存入 user space 的記憶體位址的值
-	*/
+    */
     int minor_num = MINOR(file->f_path.dentry->d_inode->i_rdev);
     struct mychar_device_data *mychar_data = &mychardev_data[minor_num];
     printk("MYCHARDEV: Device ioctl\n");
