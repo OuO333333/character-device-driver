@@ -40,13 +40,8 @@ int main(void)
     test_access_restriction();
 	
     test_rw_operation(ptr_ans, ptr_block);
-    // test_rw_operation(&ans, &block);會出現奇怪的warning
 
     test_ioctl(ptr_ans);
-
-    for(i = 0; i < 10; i++){
-        printf("ans[%d] = %c\n", i, ans[i]);
-    }
 
     return 0;
 }
@@ -102,7 +97,13 @@ void test_ioctl(char *ans){
     /* reading buffer_index from driver */
     ioctl(fd, RD_BUFFER_INDEX, (int32_t*) &buffer_index);
 	assert(buffer_index == 5);
-    printf("buffer_index is %d\n", buffer_index);
-	
+
+    /* writing character to driver(buffer) */
+    ioctl(fd, WR_BUFFER, (char*) &ch);
+
+    /* reading character from driver(buffer) */
+    ioctl(fd, RD_BUFFER, (char*) ans + buffer_index);
+    assert(ans[buffer_index] == 'Y');
+
     close(fd);
 }

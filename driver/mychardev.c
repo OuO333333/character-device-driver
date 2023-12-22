@@ -8,8 +8,6 @@
 #include <linux/ioctl.h>
 #include <asm/atomic.h>
 
-#define MAX_DEV 2
-
 #define MY_MAJOR       42
 #define MY_MAX_MINORS	2  
 #define BUF_LEN 512
@@ -114,6 +112,14 @@ void __exit mychardev_exit(void)
 static int mychardev_open(struct inode *inode, struct file *file)
 {
     int minor_num = MINOR(file->f_path.dentry->d_inode->i_rdev);
+    /* 
+    * atomic_cmpxchg(&atomic, a, b)
+    * 若atomic的值與 a 相同
+    * 則改寫為b
+    * 若atomic的值與 a 不相同
+    * 則不改寫為
+    * 回傳值皆為原本的 atomic 值
+    */
     if(!atomic_cmpxchg(&mychardev_data[minor_num].atomic_variable, 0, 1)){
         printk("MYCHARDEV: Device open successfully\n");
         return 0;
