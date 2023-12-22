@@ -96,7 +96,7 @@ void test_ioctl(char *ans){
 
     /* reading buffer_index from driver */
     ioctl(fd, RD_BUFFER_INDEX, (int32_t*) &buffer_index);
-	assert(buffer_index == 5);
+    assert(buffer_index == 5);
 
     /* writing character to driver(buffer) */
     ioctl(fd, WR_BUFFER, (char*) &ch);
