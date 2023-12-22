@@ -34,8 +34,6 @@ int main(void)
     };
 
     char *ptr_block = &block[0];
-	
-    int i;
 
     test_access_restriction();
 	
