@@ -9,7 +9,8 @@ How to use:
   &nbsp;&nbsp;&nbsp;&nbsp;In test:  
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. sudo make  
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. sudo make check  
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3. sudo tail -n50 /var/log/kern.log  
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3. sudo tail -n50 /var/log/kern.log
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4. ./dev ...
   
 What it do:  
 &nbsp;&nbsp;&nbsp;&nbsp;init operation:  
