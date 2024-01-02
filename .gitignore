@@ -7,5 +7,6 @@
 
 !test/Makefile
 !test/check.c
+!test/dev.c
 
 !README.md
