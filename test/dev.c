@@ -12,10 +12,6 @@
 #define WR_BUFFER _IOW('a','c',char*)
 #define RD_BUFFER _IOR('a','d',char*)
 
-void test_access_restriction();
-void test_rw_operation(char *ans, char *block);
-void test_ioctl(char *ans);
-
 int main(int argc, char *argv[])
 {
     if (argc == 1){
