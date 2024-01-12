@@ -42,8 +42,7 @@ struct mychar_device_data {
     int buffer_index;
     atomic_t atomic_variable;
     wait_queue_head_t wait_queue;
-    int queue_flag;  // Flag to indicate whether a process is in the queue or not
-    struct mutex mutex;  // 獨立的互斥鎖
+    int queue_flag;  // 0 indicate block, 1 indicate continue
 };
 
 /* dynamically assignment */
