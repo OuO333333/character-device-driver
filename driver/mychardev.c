@@ -3,6 +3,7 @@
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/kernel.h>
+#include <linux/delay.h>
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/ioctl.h>
@@ -16,6 +17,9 @@
 #define RD_BUFFER_INDEX _IOR('a','b',int32_t*)
 #define WR_BUFFER _IOW('a','c',char*)
 #define RD_BUFFER _IOR('a','d',char*)
+
+#define MY_IOCTL_DOWN   _IO('a', 'e')
+#define MY_IOCTL_UP     _IO('a', 'f')
 
 static int mychardev_open(struct inode *inode, struct file *file);
 static int mychardev_release(struct inode *inode, struct file *file);
@@ -37,6 +41,9 @@ struct mychar_device_data {
     char buffer[BUF_LEN];
     int buffer_index;
     atomic_t atomic_variable;
+    wait_queue_head_t wait_queue;
+    int queue_flag;  // Flag to indicate whether a process is in the queue or not
+    struct mutex mutex;  // 獨立的互斥鎖
 };
 
 /* dynamically assignment */
@@ -65,7 +72,10 @@ int __init mychardev_init(void)
     // err = alloc_chrdev_region(&dev, 0, MY_MAX_MINORS, "mychardev");
     // dev_major = MAJOR(dev);
 
-    mychardev_class = class_create(THIS_MODULE, "mychardev");
+    /* for gcc-11 */
+    // mychardev_class = class_create(THIS_MODULE, "mychardev");
+    /* for gcc-12 */
+    mychardev_class = class_create("mychardev");
     mychardev_class->dev_uevent = mychardev_uevent;
 
     for (i = 0; i < MY_MAX_MINORS; i++) {
@@ -74,6 +84,10 @@ int __init mychardev_init(void)
         strncpy(mychardev_data[i].buffer, "default msg", BUF_LEN);
         mychardev_data[i].buffer_index = 0;
         atomic_set(&mychardev_data[i].atomic_variable, 0);
+        // Initialize the wait queue and flag
+        init_waitqueue_head(&mychardev_data[i].wait_queue);
+        mychardev_data[i].queue_flag = 0;
+        mutex_init(&mychardev_data[i].mutex);
 
         /* static assignment */
         cdev_add(&mychardev_data[i].cdev, MKDEV(MY_MAJOR, i), 1);
@@ -146,6 +160,8 @@ static long mychardev_ioctl(struct file *file, unsigned int cmd, unsigned long a
     int minor_num = MINOR(file->f_path.dentry->d_inode->i_rdev);
     struct mychar_device_data *mychar_data = &mychardev_data[minor_num];
     printk("MYCHARDEV: Device ioctl\n");
+    // 加入互斥鎖
+    // mutex_lock(&mychar_data->mutex);
 
     switch(cmd){
         case WR_BUFFER_INDEX:
@@ -172,6 +188,19 @@ static long mychardev_ioctl(struct file *file, unsigned int cmd, unsigned long a
             {
                 printk("Data Read : Err!\n");
             }
+            break;
+        case MY_IOCTL_DOWN:
+            // Add the current process to the wait queue
+            printk("MYCHARDEV: Adding process to the queue\n");
+            wait_event_interruptible(mychar_data->wait_queue, mychar_data->queue_flag != 0);
+			break;
+        case MY_IOCTL_UP:
+            // Remove the current process from the wait queue
+            printk("MYCHARDEV: Removing process from the queue\n");
+            mychar_data->queue_flag = 1;
+            wake_up_interruptible(&mychar_data->wait_queue);
+            msleep(10);
+            mychar_data->queue_flag = 0;
             break;
         default:
             printk("Default\n");

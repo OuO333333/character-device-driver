@@ -4,7 +4,7 @@ KERNEL_DIR = /usr/src/linux-headers-$(KVERSION)/
 C_FLAGS     := -Wall
 MODULE_NAME = mychardev
 
-CC := x86_64-linux-gnu-gcc-11
+CC := x86_64-linux-gnu-gcc-12
 
 ccflags-y += $(C_FLAGS)
 obj-m := $(MODULE_NAME).o
