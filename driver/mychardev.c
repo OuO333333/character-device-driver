@@ -159,8 +159,6 @@ static long mychardev_ioctl(struct file *file, unsigned int cmd, unsigned long a
     int minor_num = MINOR(file->f_path.dentry->d_inode->i_rdev);
     struct mychar_device_data *mychar_data = &mychardev_data[minor_num];
     printk("MYCHARDEV: Device ioctl\n");
-    // 加入互斥鎖
-    // mutex_lock(&mychar_data->mutex);
 
     switch(cmd){
         case WR_BUFFER_INDEX:
@@ -198,6 +196,7 @@ static long mychardev_ioctl(struct file *file, unsigned int cmd, unsigned long a
             printk("MYCHARDEV: Removing process from the queue\n");
             mychar_data -> queue_flag = 1;
             wake_up_interruptible(&mychar_data -> wait_queue);
+            // wait all processes remove from queue
             msleep(10);
             mychar_data -> queue_flag = 0;
             break;
