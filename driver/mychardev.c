@@ -192,15 +192,15 @@ static long mychardev_ioctl(struct file *file, unsigned int cmd, unsigned long a
         case MY_IOCTL_DOWN:
             // Add the current process to the wait queue
             printk("MYCHARDEV: Adding process to the queue\n");
-            wait_event_interruptible(mychar_data->wait_queue, mychar_data->queue_flag != 0);
+            wait_event_interruptible(mychar_data -> wait_queue, mychar_data -> queue_flag != 0);
 			break;
         case MY_IOCTL_UP:
             // Remove the current process from the wait queue
             printk("MYCHARDEV: Removing process from the queue\n");
-            mychar_data->queue_flag = 1;
-            wake_up_interruptible(&mychar_data->wait_queue);
+            mychar_data -> queue_flag = 1;
+            wake_up_interruptible(&mychar_data -> wait_queue);
             msleep(10);
-            mychar_data->queue_flag = 0;
+            mychar_data -> queue_flag = 0;
             break;
         default:
             printk("Default\n");
