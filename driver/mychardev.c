@@ -7,7 +7,6 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/ioctl.h>
-#include <asm/atomic.h>
 
 #define MY_MAJOR       42
 #define MY_MAX_MINORS	2  
@@ -17,9 +16,6 @@
 #define RD_BUFFER_INDEX _IOR('a','b',int32_t*)
 #define WR_BUFFER _IOW('a','c',char*)
 #define RD_BUFFER _IOR('a','d',char*)
-
-#define MY_IOCTL_DOWN   _IO('a', 'e')
-#define MY_IOCTL_UP     _IO('a', 'f')
 
 static int mychardev_open(struct inode *inode, struct file *file);
 static int mychardev_release(struct inode *inode, struct file *file);
@@ -40,9 +36,9 @@ struct mychar_device_data {
     struct cdev cdev;
     char buffer[BUF_LEN];
     int buffer_index;
-    atomic_t atomic_variable;
     wait_queue_head_t wait_queue;
-    int queue_flag;  // 0 indicate block, 1 indicate continue
+    spinlock_t spinlock;
+    int process_count;
 };
 
 /* dynamically assignment */
@@ -82,11 +78,9 @@ int __init mychardev_init(void)
         mychardev_data[i].cdev.owner = THIS_MODULE;
         strncpy(mychardev_data[i].buffer, "default msg", BUF_LEN);
         mychardev_data[i].buffer_index = 0;
-        atomic_set(&mychardev_data[i].atomic_variable, 0);
-        // Initialize the wait queue and flag
         init_waitqueue_head(&mychardev_data[i].wait_queue);
-        mychardev_data[i].queue_flag = 0;
-        mutex_init(&mychardev_data[i].mutex);
+        spin_lock_init(&mychardev_data[i].spinlock);
+        mychardev_data[i].process_count = 0;
 
         /* static assignment */
         cdev_add(&mychardev_data[i].cdev, MKDEV(MY_MAJOR, i), 1);
@@ -124,28 +118,55 @@ void __exit mychardev_exit(void)
 
 static int mychardev_open(struct inode *inode, struct file *file)
 {
-    int minor_num = MINOR(file->f_path.dentry->d_inode->i_rdev);
-    /* 
-    * atomic_cmpxchg(&atomic, a, b)
-    * 若atomic的值與 a 相同
-    * 則改寫為b
-    * 若atomic的值與 a 不相同
-    * 則不改寫為
-    * 回傳值皆為原本的 atomic 值
-    */
-    if(!atomic_cmpxchg(&mychardev_data[minor_num].atomic_variable, 0, 1)){
-        printk("MYCHARDEV: Device open successfully\n");
-        return 0;
+    /* atomic version: see commit 409f6700583113761a004e6d5f766ef3453f1557 */
+    int minor_num = MINOR(inode->i_rdev);
+    struct mychar_device_data *mychar_data = &mychardev_data[minor_num];
+
+    spin_lock(&mychar_data -> spinlock);
+    while(mychar_data -> process_count != 0){
+        spin_unlock(&mychar_data -> spinlock);
+        if(file -> f_flags & O_NONBLOCK){
+            printk("MYCHARDEV: Device O_NONBLOCK open failed\n");
+            return -EAGAIN;
+        }
+        wait_queue_head_t *wq = &mychar_data->wait_queue;
+        /*
+        * wait_event_interruptible(queue, condition)
+        * 1. condition 為 true, 這時調用這個函數會直接返回 0
+        * 2. condition 為 false, 這時調用這個函數會將該 process 加入 queue 中, 
+        *    直到 condition 為 true(先) 且 wake_up_interruptible 被調用(後)
+        * 3. 若等待過程中被信號中斷, 則會返回小於 0 的值
+        * 若多個 process 通過了 wait_event_interruptible, 後面還有一個 spin_lock,
+        * 因此仍只有一個 process 能執行到 mychar_data -> process_count++ 的部份		
+        */
+        if(wait_event_interruptible(*wq, mychar_data -> process_count == 0)){
+            return -ERESTARTSYS; /* signal received or interrupted */
+        }
+        spin_lock(&mychar_data -> spinlock);
     }
-    printk("MYCHARDEV: Device open failed\n");
-    return -EBUSY; 
+
+    // Increment the process_count variable to indicate the device is open
+    mychar_data -> process_count++;
+    spin_unlock(&mychar_data -> spinlock);
+
+    // The device is now open
+    printk("MYCHARDEV: Device open successfully\n");
+    return 0;
 }
 
 static int mychardev_release(struct inode *inode, struct file *file)
 {
     int minor_num = MINOR(file->f_path.dentry->d_inode->i_rdev);
+    struct mychar_device_data *mychar_data = &mychardev_data[minor_num];
     printk("MYCHARDEV: Device close\n\n");
-    atomic_set(&mychardev_data[minor_num].atomic_variable, 0);
+
+    int temp;
+    spin_lock(&mychar_data -> spinlock);
+    mychar_data -> process_count--;
+    temp = mychar_data -> process_count;
+    spin_unlock(&mychar_data -> spinlock);
+    if(temp == 0)
+        wake_up_interruptible(&mychar_data -> wait_queue);
     return 0;
 }
 
@@ -185,20 +206,6 @@ static long mychardev_ioctl(struct file *file, unsigned int cmd, unsigned long a
             {
                 printk("Data Read : Err!\n");
             }
-            break;
-        case MY_IOCTL_DOWN:
-            // Add the current process to the wait queue
-            printk("MYCHARDEV: Adding process to the queue\n");
-            wait_event_interruptible(mychar_data -> wait_queue, mychar_data -> queue_flag != 0);
-			break;
-        case MY_IOCTL_UP:
-            // Remove the current process from the wait queue
-            printk("MYCHARDEV: Removing process from the queue\n");
-            mychar_data -> queue_flag = 1;
-            wake_up_interruptible(&mychar_data -> wait_queue);
-            // wait all processes remove from queue
-            msleep(10);
-            mychar_data -> queue_flag = 0;
             break;
         default:
             printk("Default\n");

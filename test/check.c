@@ -11,8 +11,6 @@
 #define RD_BUFFER_INDEX _IOR('a','b',int32_t*)
 #define WR_BUFFER _IOW('a','c',char*)
 #define RD_BUFFER _IOR('a','d',char*)
-#define MY_IOCTL_DOWN   _IO('a', 'e')
-#define MY_IOCTL_UP     _IO('a', 'f')
 
 void test_access_restriction();
 void test_rw_operation(char *ans, char *block);
@@ -45,8 +43,6 @@ int main(void)
 
     test_ioctl(ptr_ans);
 
-    test_waiting_queue();
-
     return 0;
 }
 
@@ -78,7 +74,7 @@ void test_access_restriction(){
     int i, count = 0;
     int fd[10];
     for(i = 0; i < 10; i++){
-        fd[i] = open("/dev/mychardev-0", O_RDWR);
+        fd[i] = open("/dev/mychardev-0", O_RDWR | O_NONBLOCK);
         if(fd[i] < 0)
             count++;
     }
@@ -110,61 +106,4 @@ void test_ioctl(char *ans){
     assert(ans[buffer_index] == 'Y');
 
     close(fd);
-}
-
-void test_waiting_queue(){
-    /*
-    * 1. init flag = 0
-    * 2. process 1 call MY_IOCTL_DOWN, requirement not match, block
-    * 3. process 2 call MY_IOCTL_DOWN, requirement not match, block
-    * 4. process 3 call MY_IOCTL_DOWN, requirement not match, block
-    * 5. process 4 call MY_IOCTL_UP, flag = 1,
-         wake up process 1 & 2 & 3 if requirement match,
-         if process 4 set flag = 0 before other processes check requirement,
-         then the remaining requirement won't match
-    * 6. process 1 & 2 & 3 continue(if requirement match)
-    */
-
-    int fd;
-    pid_t pid;
-    fd = open("/dev/mychardev-0", O_RDWR);
-
-    // Fork three child processes
-    for (int i = 0; i < 3; ++i) {
-        pid = fork();
-
-        if (pid == -1) {
-            perror("Fork failed");
-            exit(EXIT_FAILURE);
-        } else if (pid == 0) { // 子進程
-            // 執行 ioctl(fd, MY_IOCTL_DOWN)
-            printf("Child process %d executed ioctl(MY_IOCTL_DOWN)\n", getpid());
-            if (ioctl(fd, MY_IOCTL_DOWN) == -1) {
-                perror("ioctl failed");
-                exit(EXIT_FAILURE);
-            }
-            exit(EXIT_SUCCESS);
-        }
-    }
-    if (pid > 0) {
-        sleep(1);
-        pid = fork();
-        if (pid == -1) {
-            perror("Fork failed");
-            exit(EXIT_FAILURE);
-        } else if (pid == 0) { // 子進程
-            // 執行 ioctl(fd, MY_IOCTL_UP)
-            printf("Child process %d executed ioctl(MY_IOCTL_UP)\n", getpid());
-            if (ioctl(fd, MY_IOCTL_UP) == -1) {
-                perror("ioctl failed");
-                exit(EXIT_FAILURE);
-            }
-            exit(EXIT_SUCCESS);
-        }
-    }
-
-    // Wait for all child processes to complete
-    for (int i = 0; i < 4; i++) {
-        wait(NULL);
-    }
 }
