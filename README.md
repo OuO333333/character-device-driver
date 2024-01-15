@@ -16,11 +16,14 @@ What it do:
 &nbsp;&nbsp;&nbsp;&nbsp;init operation:  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;implement static & dynamic methods to register device region  
 &nbsp;&nbsp;&nbsp;&nbsp;open/release operation:  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;use atomic to control the number of devices that can be accessed  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. simple version: use atomic to control the number of devices that can be accessed(see commit  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;409f6700583113761a004e6d5f766ef3453f1557)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. difficult version: Linux Device Drivers, 3rd Edition, Restricting Access to a Single User at a Time  
 &nbsp;&nbsp;&nbsp;&nbsp;R/W operation:  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;maintain a buffer and perform r/w operations on it  
 &nbsp;&nbsp;&nbsp;&nbsp;ioctl operation:  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;use ioctl operation for more customized behavior on devices  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. use ioctl operation for more customized behavior on devices  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. MY_IOCTL_DOWN & MY_IOCTL_UP(see commit 409f6700583113761a004e6d5f766ef3453f1557)
   
 Reference:  
     &nbsp;&nbsp;&nbsp;&nbsp;character device drivers:  
@@ -36,4 +39,6 @@ Reference:
     &nbsp;&nbsp;&nbsp;&nbsp;atomic example:  
     &nbsp;&nbsp;&nbsp;&nbsp;https://www.hitchhikersguidetolearning.com/2021/01/03/linux-kernel-atomic-operations-sample-code/  
     &nbsp;&nbsp;&nbsp;&nbsp;-Wimplicit-function-declaration:  
-    &nbsp;&nbsp;&nbsp;&nbsp;https://hackmd.io/@unis/44455566
+    &nbsp;&nbsp;&nbsp;&nbsp;https://hackmd.io/@unis/44455566  
+    &nbsp;&nbsp;&nbsp;&nbsp;Blocking open & Non Blocking open  
+    &nbsp;&nbsp;&nbsp;&nbsp;https://www.makelinux.net/ldd3/chp-6-sect-6.shtml
